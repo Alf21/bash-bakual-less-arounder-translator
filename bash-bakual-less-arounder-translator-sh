@@ -42,9 +42,9 @@ replaceASCII()
 	fi
 	
 	if [ $1 -eq 1 ]; then
-		echo $(echo "$2" | sed 's/</MASK_LESS_THAN/g' | sed 's/>/MASK_GREATER_THAN/g' | sed 's/\//MASK_SLASH/g')
+		echo $(echo "$2" | sed 's/</MASK_LESS_THAN/g' | sed 's/>/MASK_GREATER_THAN/g' | sed 's/\//MASK_SLASH/g' | sed 's/#/MASK_HASHTAG/g')
 	else
-		echo $(echo "$2" | sed 's/MASK_LESS_THAN/</g' | sed 's/MASK_GREATER_THAN/>/g' | sed 's/MASK_SLASH/\//g')
+		echo $(echo "$2" | sed 's/MASK_LESS_THAN/</g' | sed 's/MASK_GREATER_THAN/>/g' | sed 's/MASK_SLASH/\//g' | sed 's/MASK_HASHTAG/#/g')
 	fi
 }
 
