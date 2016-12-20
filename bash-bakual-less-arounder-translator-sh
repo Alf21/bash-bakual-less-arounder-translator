@@ -1,0 +1,100 @@
+#!/bin/bash
+
+newlines()
+{
+	if [ -z "$1" ]                           # Is parameter #1 zero length?
+	then
+		return 1
+	fi
+
+	num="${1-$DEFAULT}"
+	x=0
+		
+	while [ "$x" -ne "$num" ]; do
+		echo "" >&2
+		x=`expr "$x" + 1`
+	done
+	
+	return 0
+}
+
+translate()
+{
+	word="empty"
+	
+	if [ $# == 3 ]; then
+		 word=$(bash thirdparty/translate-shell-develop/translate -s "$1" -t "$2" -no-auto -brief "$3")
+	fi
+	
+	echo "$word"
+}
+
+replaceASCII()
+{
+	if [ -z "$1" ]                           # Is parameter #1 zero length?
+	then
+		return 1
+	fi
+	
+	if [ -z "$2" ]                           # Is parameter #2 zero length?
+	then
+		return 1
+	fi
+	
+	if [ $1 -eq 1 ]; then
+		echo $(echo "$2" | sed 's/</MASK_LESS_THAN/g' | sed 's/>/MASK_GREATER_THAN/g' | sed 's/\//MASK_SLASH/g')
+	else
+		echo $(echo "$2" | sed 's/MASK_LESS_THAN/</g' | sed 's/MASK_GREATER_THAN/>/g' | sed 's/MASK_SLASH/\//g')
+	fi
+}
+
+#check whether target file exists
+if ! [ -e $1 ]; then
+	echo "File '$1' does not exists!"
+	exit 1
+fi
+
+#create params for new tranlated file
+filename=$(basename "$1") #get file name
+extension="${1##*.}" #get file extension
+value=-$(expr ${#extension} + 1) #get length of extension and add 1 (for the dot at the end)
+filename=${filename::$value} #cut extension from the file name
+name="${filename}_translated_en-de.${extension}" #create a new file as [FILENAME]_translated_en-de.[FILEEXTENSION]
+
+#count number of target file lines
+NUMOFLINES=$(wc -l < "$1")
+
+#set counter
+x=1
+
+#remove file if exists
+if [ -e $name ]; then
+	rm $name
+fi
+
+#create file
+touch "$name"
+
+while IFS='' read -r line || [[ -n "$line" ]]; do # Read the file line by line
+	echo -ne "Translating... Progress [${x} / ${NUMOFLINES}]\r"
+	if [ "${line:0:1}" == ";" ]; then # if the first char is ';' -> command
+		echo "$line" >> "$name"
+	elif ! [ -z "$line" ]; then # if its also no empty line
+		param=$(cut -d '=' -f 1 <<< "$line")
+		value=${line:$(expr ${#param} + 2):-1}
+		value=$(replaceASCII 1 "$value")
+		word=$(translate en de "$value" 2> /dev/null) # if its a definition
+		word=$(replaceASCII 0 "$word")
+		echo "${param}=\"${word}\"" >> "$name"
+	else # empty line
+		echo "" >> "$name"
+	fi
+	x=`expr $x + 1`
+done < "$1"
+
+echo -ne "Ready!\r\c"
+sleep 1
+
+echo -e "The file '${filename}.${extension}' had been translated completely. (look at '$name')"
+
+exit 0
